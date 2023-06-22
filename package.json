@@ -15,6 +15,8 @@
     "@trpc/next": "^10.26.0",
     "@trpc/react-query": "^10.26.0",
     "@trpc/server": "^10.26.0",
+    "javascript-lp-solver": "^0.4.24",
+    "lp_solve": "^0.2.18",
     "next": "^13.4.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
