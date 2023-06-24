@@ -1,54 +1,25 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import lpsolve from 'lp_solve';
 
+
 interface Product {
-  name: string
-  demand: number
-  objectiveWeight: number
+  id: string;
+  name: string;
+  demand: string;
+  objectiveWeight: number;
 }
 
 interface Processor {
-  name: string
-  avaliableTime: number
-  productOutputs: {productName: string, output: number}[]
+  id: string;
+  name: string;
+  avaliableTime: string;
+  productOutputs: { productId: string; productName: string; output: string }[];
 }
 
-const defaultProducts: Product[] = [
-  {
-    name: 'apples',
-    demand: 45,
-    objectiveWeight: 1,
-  },
-  {
-    name: 'oranges',
-    demand: 5,
-    objectiveWeight: 1,
-  },
-];
-
-const defaultProcessors: Processor[] = [
-  {
-    name: 'Desert',
-    avaliableTime: 2400,
-    productOutputs: [
-      { productName: 'apples', output: 50, },
-      { productName: 'oranges', output: 24, },
-    ]
-  },
-  {
-    name: 'Tundra',
-    avaliableTime: 2100,
-    productOutputs: [
-      { productName: 'apples', output: 30, },
-      { productName: 'oranges', output: 33, },
-    ]
-  },
-]
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  // const products: Product[] =  req.body.products;
-  // const processors: Processor[] =  req.body.processors;
-  const products: Product[] =  defaultProducts;
-  const processors: Processor[] =  defaultProcessors;
+  const products: Product[] =  req.body.products;
+  const processors: Processor[] =  req.body.processors;
+
   const Row = lpsolve.Row;
 
   const lp = new lpsolve.LinearProgram();
@@ -56,12 +27,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const columns = products.map(({ name, demand }) => ({
     column: lp.addColumn(name), 
-    demand,
+    demand: parseFloat(demand),
     name
   }))
-  // const x = lp.addColumn('x'); // lp.addColumn('x', true) for integer 
-  // const y = lp.addColumn('y'); // lp.addColumn('y', false, true) for binary 
-
 
   const objective = columns.reduce(
     (row, { column, demand }) => row.Add(column, demand),
@@ -73,14 +41,14 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     const outputsRow = productOutputs.reduce((row, { productName, output }) => {
       const maybeColumn = columns.find(({ name }) => name === productName);
       if (maybeColumn) {
-        return row.Add(maybeColumn.column, output);
+        return row.Add(maybeColumn.column, parseFloat(output));
       }
       return row;
     }, new Row())
     return {
       row: outputsRow,
       processorName,
-      avaliableTIme
+      avaliableTIme: parseFloat(avaliableTIme)
     };
   })
 

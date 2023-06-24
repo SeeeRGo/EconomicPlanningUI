@@ -1,9 +1,37 @@
 import styles from "./index.module.css";
 import Head from "next/head";
+import { Button, Stack, TextField, Typography } from "@mui/material";
+import { useState } from "react";
+import { v4 } from "uuid";
 // import { api } from "~/utils/api";
 
+interface Product {
+  id: string;
+  name: string;
+  demand: number;
+  objectiveWeight: number;
+}
+
+interface Processor {
+  id: string;
+  name: string;
+  avaliableTime: number;
+  productOutputs: { productId: string; productName: string; output: number }[];
+}
+
+interface Result {
+  program: string;
+  result: string;
+  objectiveValue: string;
+  productResults: any[];
+  time: any[];
+}
 export default function Home() {
   // const hello = api.example.hello.useQuery({ text: "from tRPC" });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [processors, setProcessors] = useState<Processor[]>([]);
+  const [result, setResult] = useState<Result>();
+
   return (
     <>
       <Head>
@@ -13,6 +41,226 @@ export default function Home() {
       </Head>
       <main className={styles.main}>
         ECONOMIC PLANNING INTERFACES
+        <Button>Upload CSV</Button>
+        <Stack rowGap={1}>
+          <Typography>Products</Typography>
+          {products.map(({ name, demand, objectiveWeight, id }, i) => (
+            <Stack key={i} columnGap={1} direction={"row"}>
+              <TextField
+                label="name"
+                value={name}
+                onChange={(ev) => {
+                  setProducts(
+                    products.map((product) =>
+                      product.id === id
+                        ? { name: ev.target.value, demand, objectiveWeight, id }
+                        : product
+                    )
+                  );
+                  setProcessors(
+                    processors.map(({ productOutputs, ...rest }) => ({
+                      ...rest,
+                      productOutputs: productOutputs.map((productOutput) =>
+                        productOutput.productId === id
+                          ? {
+                              ...productOutput,
+                              productName: ev.target.value,
+                            }
+                          : productOutput
+                      ),
+                    }))
+                  );
+                }}
+              />
+              <TextField
+                label="demand"
+                type="number"
+                value={demand}
+                onChange={(ev) => {
+                  setProducts(
+                    products.map((product) =>
+                      product.id === id
+                        ? {
+                            demand: ev.target.value,
+                            name,
+                            objectiveWeight,
+                            id,
+                          }
+                        : product
+                    )
+                  );
+                }}
+              />
+              <TextField
+                label="objectiveWeight"
+                type="number"
+                value={objectiveWeight}
+                onChange={(ev) => {
+                  setProducts(
+                    products.map((product) =>
+                      product.id === id
+                        ? {
+                            objectiveWeight: ev.target.value,
+                            demand,
+                            name,
+                            id,
+                          }
+                        : product
+                    )
+                  );
+                }}
+              />
+            </Stack>
+          ))}
+          <Button
+            onClick={() => {
+              const id = v4();
+              setProducts([
+                ...products,
+                { id, name: "", demand: 1, objectiveWeight: 1 },
+              ]);
+              setProcessors(
+                processors.map(({ productOutputs, ...rest }) => ({
+                  ...rest,
+                  productOutputs: [
+                    ...productOutputs,
+                    { productId: id, productName: "", output: 0 },
+                  ],
+                }))
+              );
+            }}
+          >
+            Add Product
+          </Button>
+        </Stack>
+        <Stack rowGap={1}>
+          <Typography>Processors</Typography>
+          {processors.map(({ name, avaliableTime, productOutputs, id }, i) => (
+            <Stack columnGap={1} key={i} direction={"row"}>
+              <TextField
+                label="name"
+                value={name}
+                onChange={(ev) => {
+                  setProcessors(
+                    processors.map((processor) =>
+                      processor.id === id
+                        ? {
+                            name: ev.target.value,
+                            avaliableTime,
+                            productOutputs,
+                            id,
+                          }
+                        : processor
+                    )
+                  );
+                }}
+              />
+              <TextField
+                label="avaliableTime"
+                type="number"
+                value={avaliableTime}
+                onChange={(ev) => {
+                  setProcessors(
+                    processors.map((processor) =>
+                      processor.id === id
+                        ? {
+                            avaliableTime: ev.target.value,
+                            name,
+                            productOutputs,
+                            id,
+                          }
+                        : processor
+                    )
+                  );
+                }}
+              />
+              {productOutputs.map(({ productName, output, productId }) => (
+                <Stack direction="row" key={productId}>
+                  <Typography>{productName}</Typography>
+                  <TextField
+                    label="productName"
+                    type="number"
+                    value={output}
+                    onChange={(ev) => {
+                      setProcessors(
+                        processors.map((processor) =>
+                          processor.id === id
+                            ? {
+                                avaliableTime,
+                                name,
+                                id,
+                                productOutputs: productOutputs.map(
+                                  (productOutput) =>
+                                    productOutput.productId === productId
+                                      ? {
+                                          ...productOutput,
+                                          output: ev.target.value,
+                                        }
+                                      : productOutput
+                                ),
+                              }
+                            : processor
+                        )
+                      );
+                    }}
+                  />
+                </Stack>
+              ))}
+            </Stack>
+          ))}
+          <Button
+            onClick={() => {
+              setProcessors([
+                ...processors,
+                {
+                  id: v4(),
+                  name: "",
+                  avaliableTime: 0,
+                  productOutputs: products.map(({ name, id }) => ({
+                    productName: name,
+                    productId: id,
+                    output: 0,
+                  })),
+                },
+              ]);
+            }}
+          >
+            Add Processor
+          </Button>
+        </Stack>
+        <Button
+          onClick={() => {
+            fetch("/api/calculate", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                products,
+                processors,
+              }),
+            })
+              .then((data) => {
+                return data.json()
+              })
+              .then((data) => {
+                setResult(data)
+              })
+              .catch((e) => {
+                console.log("error", e);
+              });
+          }}
+        >
+          Calculate Result
+        </Button>
+        {result ? (
+          <Stack>
+            <Typography>Overall Result: {result.result.description}</Typography>
+            <Typography>Objective value: {result.objectiveValue}</Typography>
+            <Typography>Products produced: {result.productResults.map(({result, productName}) => `${result} ${productName} would be produced; `)}</Typography>
+            <Typography>Processors time used: {result.time.map(({processorName, result}) => `${processorName} will be used for ${result} time units`)}</Typography>
+          </Stack>
+        ) : null}
       </main>
     </>
   );
