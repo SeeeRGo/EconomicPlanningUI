@@ -3,34 +3,17 @@ import Head from "next/head";
 import { Button, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import { v4 } from "uuid";
-// import { api } from "~/utils/api";
+import { api } from "~/utils/api";
+import type { Processor, Product } from "~/server/types";
 
-interface Product {
-  id: string;
-  name: string;
-  demand: number;
-  objectiveWeight: number;
-}
-
-interface Processor {
-  id: string;
-  name: string;
-  avaliableTime: number;
-  productOutputs: { productId: string; productName: string; output: number }[];
-}
-
-interface Result {
-  program: string;
-  result: string;
-  objectiveValue: string;
-  productResults: any[];
-  time: any[];
-}
 export default function Home() {
-  // const hello = api.example.hello.useQuery({ text: "from tRPC" });
   const [products, setProducts] = useState<Product[]>([]);
   const [processors, setProcessors] = useState<Processor[]>([]);
-  const [result, setResult] = useState<Result>();
+  // const [result, setResult] = useState<Result>();
+  const result = api.calculate.calculate.useQuery({ products, processors }, {
+    enabled: false,
+  })
+
 
   return (
     <>
@@ -81,7 +64,7 @@ export default function Home() {
                     products.map((product) =>
                       product.id === id
                         ? {
-                            demand: ev.target.value,
+                            demand: parseFloat(ev.target.value),
                             name,
                             objectiveWeight,
                             id,
@@ -100,7 +83,7 @@ export default function Home() {
                     products.map((product) =>
                       product.id === id
                         ? {
-                            objectiveWeight: ev.target.value,
+                            objectiveWeight: parseFloat(ev.target.value),
                             demand,
                             name,
                             id,
@@ -164,7 +147,7 @@ export default function Home() {
                     processors.map((processor) =>
                       processor.id === id
                         ? {
-                            avaliableTime: ev.target.value,
+                            avaliableTime: parseFloat(ev.target.value),
                             name,
                             productOutputs,
                             id,
@@ -194,7 +177,7 @@ export default function Home() {
                                     productOutput.productId === productId
                                       ? {
                                           ...productOutput,
-                                          output: ev.target.value,
+                                          output: parseFloat(ev.target.value),
                                         }
                                       : productOutput
                                 ),
@@ -230,35 +213,17 @@ export default function Home() {
         </Stack>
         <Button
           onClick={() => {
-            fetch("/api/calculate", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                products,
-                processors,
-              }),
-            })
-              .then((data) => {
-                return data.json()
-              })
-              .then((data) => {
-                setResult(data)
-              })
-              .catch((e) => {
-                console.log("error", e);
-              });
+            result.refetch().then(() => { return }).catch(() => { return })
           }}
         >
           Calculate Result
         </Button>
-        {result ? (
+        {result.data ? (
           <Stack>
-            <Typography>Overall Result: {result.result.description}</Typography>
-            <Typography>Objective value: {result.objectiveValue}</Typography>
-            <Typography>Products produced: {result.productResults.map(({result, productName}) => `${result} ${productName} would be produced; `)}</Typography>
-            <Typography>Processors time used: {result.time.map(({processorName, result}) => `${processorName} will be used for ${result} time units`)}</Typography>
+            <Typography>Overall Result: {result.data.result.description}</Typography>
+            <Typography>Objective value: {result.data.objectiveValue}</Typography>
+            <Typography>Products produced: {result.data.productResults.map(({result: productResult, productName}) => `${productResult ?? 'unknown number'} ${productName} would be produced; `)}</Typography>
+            <Typography>Processors time used: {result.data.time.map(({processorName, result: timeResult}) => `${processorName} will be used for ${timeResult} time units`)}</Typography>
           </Stack>
         ) : null}
       </main>
